@@ -19,16 +19,49 @@ void AAuraEffectActor::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, const TSubclassOf<UGameplayEffect> GameplayEffectClass) const
+void AAuraEffectActor::ApplyAllEffectToTarget(AActor* TargetActor)
+{
+	for (const auto Element : GameplayEffects)
+	{
+		ApplySpecificEffectToTarget(TargetActor, Element);
+	}
+}
+
+void AAuraEffectActor::ApplySpecificEffectToTarget(AActor* TargetActor, const FGameplayEffectData GameplayEffectData)
 {
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 	if (TargetASC == nullptr) return;
 
-	check(GameplayEffectClass)
+	check(GameplayEffectData.GameplayEffectClass)
 	FGameplayEffectContextHandle EffectContextHandle = TargetASC->MakeEffectContext();
 	EffectContextHandle.AddSourceObject(this);
 
-	const FGameplayEffectSpecHandle EffectSpecHandle = TargetASC->MakeOutgoingSpec(GameplayEffectClass, 1.f, EffectContextHandle);
-	TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	const FGameplayEffectSpecHandle EffectSpecHandle = TargetASC->MakeOutgoingSpec(GameplayEffectData.GameplayEffectClass, GameplayEffectData.Level, EffectContextHandle);
+	const FActiveGameplayEffectHandle ActiveGameplayEffectHandle = TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+
+	if (EffectSpecHandle.Data.Get()->Def.Get()->DurationPolicy == EGameplayEffectDurationType::Infinite)
+	{
+		AppliedGameplayEffects.Add(ActiveGameplayEffectHandle);
+	}
 }
 
+void AAuraEffectActor::RemoveAllAppliedInfiniteEffectFromTarget(AActor* TargetActor)
+{
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+	if (TargetASC == nullptr) return;
+
+	TArray<FActiveGameplayEffectHandle> ToRemove;
+	for (auto Element : AppliedGameplayEffects)
+	{
+		if (TargetASC == Element.GetOwningAbilitySystemComponent())
+		{
+			TargetASC->RemoveActiveGameplayEffect(Element);
+			ToRemove.Add(Element);
+		}
+	}
+
+	for (auto Element : ToRemove)
+	{
+		AppliedGameplayEffects.Remove(Element);	
+	}
+}

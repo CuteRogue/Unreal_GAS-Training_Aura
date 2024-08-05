@@ -6,8 +6,21 @@
 #include "GameFramework/Actor.h"
 #include "AuraEffectActor.generated.h"
 
+struct FActiveGameplayEffectHandle;
 class UGameplayEffect;
 class USphereComponent;
+
+USTRUCT(BlueprintType, Blueprintable)
+struct FGameplayEffectData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSubclassOf<UGameplayEffect> GameplayEffectClass;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	float Level = 1.0f;
+};
 
 UCLASS()
 class AURA_API AAuraEffectActor : public AActor
@@ -20,14 +33,18 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UFUNCTION(BlueprintCallable)
-	void ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGameplayEffect> GameplayEffectClass) const;
+	UFUNCTION(BlueprintCallable, Category="Aura Effects")
+	void ApplyAllEffectToTarget(AActor* TargetActor);
+	UFUNCTION(BlueprintCallable, Category="Aura Effects")
+	void ApplySpecificEffectToTarget(AActor* TargetActor, FGameplayEffectData GameplayEffectData);
+	UFUNCTION(BlueprintCallable, Category="Aura Effects")
+	void RemoveAllAppliedInfiniteEffectFromTarget(AActor* TargetActor);
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
-	TSubclassOf<UGameplayEffect> InstantGameplayEffectClass;
+	TArray<FGameplayEffectData> GameplayEffects;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
-	TSubclassOf<UGameplayEffect> DurationGameplayEffectClass;
+	UPROPERTY(BlueprintReadOnly)
+	TArray<FActiveGameplayEffectHandle> AppliedGameplayEffects;
 	
 private:
 };
